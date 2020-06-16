@@ -1,8 +1,8 @@
-# Two minute Python job, 1.5 seconds with Rust
+# 90x faster Rust code?! 
 
-Projecting security prices using brut force methods is expensive but often times it's the only way satisfy a curiousity. This time around, I was curious about how current volatility would affect future prices so I projected prices of a Apple stock for 60 days 500 times. I prototyped the algorithms in Python but then refactored the actual price generator in Rust. 
+Projecting security prices using brut force methods is expensive but some times it's the only way to satisfy a curiousity. I was curious about how current volatility would affect future prices so I wrote a Python script to project Apple stock prices. After protyping the algorithm in Python, I optmized the price generation in Rust. 
 
-I didn't find the actual projections as interesting at the near 99% decrease in time it took to generate the price. In Python it took 2 minutes and 3 seconds to generate prices while in Rust it took a mere 1.5 seconds. 
+I didn't find the actual projections as interesting as the near 99% decrease in execution time it took to generate prices. In Python it took 2 minutes and 3 seconds to generate prices while in Rust it took a mere 1.5 seconds. 
 
 ### Python Timing
 
@@ -40,13 +40,13 @@ wc -l AAPL_projected_returns.csv
 24500 AAPL_projected_returns.csv
 ```
 
-I'll say upfront I only have a vague idea of why the Rust implementation is so much faster but will say that I would consider myself an average user of both languages and didn't do any optmizations in either language. I do use Pandas in the Python code but the part of Python code that I rewrote in Rust is effectively two for loops.
+I'll say upfront I only have a vague idea of why the Rust implementation is so much faster. I consider myself a naive user of both languages and didn't implement any language level optimizations in either implementation. I do use Pandas in the Python code and I have no idea if Pandas is optimized for certain types of computations and not for others.
 
 ## Projected Prices
 
 The algorithm used to project future prices generates a price for each day by randomly selecting a return from historical returns. The historical returns are categorized by 3-day volatility patterns based on the current day return relative to the 20-day standard deviation of returns. 
 
-For each day that we need to project forward, we randomly select from a list of returns associated with a 3-day volatility pattern and multiply the current price by 1 + the return. For this analysis, projected prices for 49 days 500 times resulting in 24,500 projected prices.
+For each day that we need to project, we randomly select from a list of returns associated with a 3-day volatility pattern and multiply the current price by 1 + the return. For this analysis, we projected prices for 49 days 500 times resulting in 24,500 projected prices. In Python I used a dataframe from this look up with the pattern as the lookup column and the list of returns in another column. In Rust, I used a HashMap.   
 
 ## The Optimization
 
@@ -54,9 +54,11 @@ The part of the code of that was optmized in Rust does the following:
 
 1. Opens a csv file of historical returns
 2. Groups the returns to a hashmap where the key is tag pattern and the value is a list of returns 
-3. Creates another hash map with the current day tag (This is used as a fallback if the tag pattern doesn't exist)
-4. For each generation is generates prices for the number of days and pushes it into an array
-5. Write the prices stored in the array to a csv
+3. Creates another hash map with the current day tag and a corresponding list of returns (This is used as a fallback if the tag pattern doesn't exist)
+4. For each generation it generates prices for the number of days and pushes it into an array of projected prices
+5. Write the array of projected prices to a csv file
+
+Agains, I didn't optimize code in either language and generally wrote naive code. In Rust I had an idea of data that I wanted to reference because I thought moves would be expensive and just did what the compiler told me to do to make my code work. I probably cloned something when I didn't have to but given the results I'm not complaining. 
 
 Here's the primary function that got ported to Rust. 
 
@@ -104,9 +106,9 @@ def generate_projected_returns(filepath, ticker_symbol, generations, days_ahead,
     projected_returns_df.to_csv(returns_path, index=False)
 ```
 
-You can find the full python in the `prog.py` file of this directory.
+You can find the full python code in the `prog.py` file in this repository.
 
-The run the Rust binary, `clotho`, from the Python script I use `os.popen`. Which is cool but would be better if it just accepted an array of commands.
+To run the Rust binary, `clotho`, from the Python script I use `os.popen`. Once I had the Rust implementation working, I used the same function call and executed the Rust binary.
 
 ```python
 def generate_projected_returns(filepath, ticker_symbol, generations, days_ahead, expiry_date):
@@ -123,6 +125,16 @@ def generate_projected_returns(filepath, ticker_symbol, generations, days_ahead,
 
 The Rust code is verbose so I'm not including it here but here's a [gist](https://gist.github.com/choiway/a1bb9d92f5753a5b7781b3814e40ba77). 
 
+## Take Aways
 
+I'm still suprised by how much faster the Rust code is than the Python equivalent given that I naively wrote code that really just reads csv, generates 24,500 data points and writes the results. It's not taking advantage of concurrency or any fancy Rust featuresso I wouldn't have guessed that the Rust code would be so much faster. 
+
+I figure the read and write is constrained by the hard drive so I'm guessing most of the gain comes from the look ups which probably benefits from manual memory management in Rust.
+
+I really like working with Rust's ecosystem. Online documentation is good and Cargo is pleasant to work with. I used `peroxide` to calculate standard deviations but was surprised that there are more math oriented libraries. 
+
+The `clap` Crate is great and really simplified the passing and parsing of commnand line arguments in Rust. 
+
+The big takeaway is that, as someone coming from a finance background, I'm pleasantly suprised by how Rust makes writing performant code accessible. 
 
 
