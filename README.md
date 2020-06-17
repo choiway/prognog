@@ -1,14 +1,12 @@
-# 90x faster Rust code?! 
+# 80x faster Rust code?! 
 
-Projecting security prices using brut force methods is expensive but some times it's the only way to satisfy a curiousity. I was curious about how current volatility would affect future prices so I wrote a Python script to project Apple stock prices. After protyping the algorithm in Python, I optmized the price generation in Rust. 
+Projecting security prices using brut force methods is expensive but some times it's the only way to satisfy a curiousity. I was curious about how current volatility would affect future prices so I wrote a Python script to project Apple stock prices. After prototyping the algorithm in Python, I optmized the price generation part of the code in Rust. 
 
-I didn't find the actual projections as interesting as the near 99% decrease in execution time it took to generate prices. In Python it took 2 minutes and 3 seconds to generate prices while in Rust it took a mere 1.5 seconds. 
+The actual projections aren't as interesting as the near 99% decrease in execution time it took to generate prices. In Python it took 2 minutes and 3 seconds to generate prices while in Rust it took a mere 1.5 seconds. 
 
 ### Python Timing
 
 ```
-time python prog.py
-
 Initializing
 [AAPL] Updating model
 [AAPL] Generating data for expiry date:  2020-08-21
@@ -40,13 +38,13 @@ wc -l AAPL_projected_returns.csv
 24500 AAPL_projected_returns.csv
 ```
 
-I'll say upfront I only have a vague idea of why the Rust implementation is so much faster. I consider myself a naive user of both languages and didn't implement any language level optimizations in either implementation. I do use Pandas in the Python code and I have no idea if Pandas is optimized for certain types of computations and not for others.
+I'll say upfront I only have a vague idea of why the Rust implementation is so much faster. I consider myself a naive user of both languages and didn't implement any language level optimizations. I do use Pandas in the Python code and I have no idea if Pandas is optimized for certain types of computations and not for others.
 
 ## Projected Prices
 
-The algorithm used to project future prices generates a price for each day by randomly selecting a return from historical returns. The historical returns are categorized by 3-day volatility patterns based on the current day return relative to the 20-day standard deviation of returns. 
+The algorithm used to project future prices generates a price for each projected day by randomly selecting a return from historical returns. The historical returns are categorized by 3-day volatility patterns based on the current day return relative to the standard deviation of returns over the previous 20 days.
 
-For each day that we need to project, we randomly select from a list of returns associated with a 3-day volatility pattern and multiply the current price by 1 + the return. For this analysis, we projected prices for 49 days 500 times resulting in 24,500 projected prices. In Python I used a dataframe from this look up with the pattern as the lookup column and the list of returns in another column. In Rust, I used a HashMap.   
+For each day projected day, we randomly select from a list of returns associated with a 3-day volatility pattern and multiply the current price by 1 + the return. For this analysis, we projected prices for 49 days 500 times resulting in 24,500 projected prices. In Python I used a dataframe for this look up while in Rust, I used a HashMap.
 
 ## The Optimization
 
@@ -55,24 +53,20 @@ The part of the code of that was optmized in Rust does the following:
 1. Opens a csv file of historical returns
 2. Groups the returns to a hashmap where the key is tag pattern and the value is a list of returns 
 3. Creates another hash map with the current day tag and a corresponding list of returns (This is used as a fallback if the tag pattern doesn't exist)
-4. For each generation it generates prices for the number of days and pushes it into an array of projected prices
+4. For each generation it generates prices for the number of days and pushes it into an array of projected prices. The only significant calculation it performs here is one standard deviation calculation.
 5. Write the array of projected prices to a csv file
 
-Agains, I didn't optimize code in either language and generally wrote naive code. In Rust I had an idea of data that I wanted to reference because I thought moves would be expensive and just did what the compiler told me to do to make my code work. I probably cloned something when I didn't have to but given the results I'm not complaining. 
+Again, I didn't optimize code in either language. When writing the Rust code, I had an idea of data that I wanted to reference because I thought moves would be expensive and just did what the Rust compiler told me to until my code worked. 
 
-Here's the primary function that got ported to Rust. 
+Here's the primary Python function that got ported to Rust. 
 
 ```python
 def generate_projected_returns(filepath, ticker_symbol, generations, days_ahead, expiry_date):
-    # Build dataframe for returns by tag patterns
     df = pd.read_csv(filepath)
     tagged_returns_df = df.groupby(['tag_pattern'])[
         'next_ret'].apply(list)
-    # Build dataframe for return by tag
-    # We use this as a fallback in case a tag pattern doesn't exist
     tag_returns_bin_df = df.groupby(['tag'])['next_ret'].apply(list)
     last_20_returns = df.tail(20)['ret'].to_list()
-    # Init rojected returns dataframe
     projected_returns_df = pd.DataFrame(
         columns=['generation', 'day', 'tag_pattern', 'ret', 'price'])
     for i in range(1, generations + 1):
@@ -80,7 +74,6 @@ def generate_projected_returns(filepath, ticker_symbol, generations, days_ahead,
         current_tag_pattern = df.iloc[-1]['tag_pattern']
         price = df.iloc[-1]['adj_close']
         for j in range(1, days_ahead + 1):
-            # Find bin of next returns by tag pattern
             next_ret_bin = get_ret_bin(
                 current_tag_pattern, tagged_returns_df, tag_returns_bin_df)
             current_ret = random.choice(next_ret_bin)
@@ -127,14 +120,16 @@ The Rust code is verbose so I'm not including it here but here's a [gist](https:
 
 ## Take Aways
 
-I'm still suprised by how much faster the Rust code is than the Python equivalent given that I naively wrote code that really just reads csv, generates 24,500 data points and writes the results. It's not taking advantage of concurrency or any fancy Rust featuresso I wouldn't have guessed that the Rust code would be so much faster. 
+I'm still suprised by how much faster the Rust code given that it's not taking advantage of concurrency or any fancy Rust features. 
 
 I figure the read and write is constrained by the hard drive so I'm guessing most of the gain comes from the look ups which probably benefits from manual memory management in Rust.
 
-I really like working with Rust's ecosystem. Online documentation is good and Cargo is pleasant to work with. I used `peroxide` to calculate standard deviations but was surprised that there are more math oriented libraries. 
+I do wonder what the performance gain would be if I optimized the Python code before writing it in Rust. 
 
-The `clap` Crate is great and really simplified the passing and parsing of commnand line arguments in Rust. 
+I really like working with Rust's ecosystem. Online documentation is good and Cargo is great. 
 
-The big takeaway is that, as someone coming from a finance background, I'm pleasantly suprised by how Rust makes writing performant code accessible. 
+I used `peroxide` to calculate standard deviations but was surprised that there aren't more math/data science  libraries for Rust.. 
 
+The `clap` Crate is awesome and really simplified the passing and parsing of commnand line arguments in Rust. 
 
+The big takeaway is that, as someone with more of a finance background, I'm pleasantly suprised by how Rust makes writing performant code accessible. 
