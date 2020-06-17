@@ -2,43 +2,9 @@
 
 Projecting security prices using brut force methods is expensive but some times it's the only way to satisfy a curiousity. I was curious about how current volatility would affect future prices so I wrote a Python script to project Apple stock prices. After prototyping the algorithm in Python, I optmized the price generation part of the code in Rust. 
 
-The actual projections aren't as interesting as the near 99% decrease in execution time it took to generate prices. In Python it took 2 minutes and 3 seconds to generate prices while in Rust it took a mere 1.5 seconds. 
+The actual projections aren't as interesting as the near 99% decrease in execution time it took to generate prices. In Python it took `2 minutes and 3 seconds` to generate prices while in Rust it took a mere `1.5 seconds`. 
 
-### Python Timing
-
-```
-Initializing
-[AAPL] Updating model
-[AAPL] Generating data for expiry date:  2020-08-21
-[AAPL] saving csv to:  /tmp/AAPL_projected_returns.csv
-
-real    2m3.124s
-user    2m2.566s
-sys     0m0.556s
-
-wc -l AAPL_projected_returns.csv
-24501 AAPL_projected_returns.csv  # writes a header
-```
-
-
-### Rust Timing
-
-```
-Initializing
-[AAPL] Updating model
-[AAPL] Generating data for expiry date:  2020-08-21
-[2020-06-15T20:13:04Z INFO  clotho] [AAPL] from /tmp/aapl.csv
-[2020-06-15T20:13:04Z INFO  clotho] [AAPL] Writing csv
-
-real    0m1.502s
-user    0m0.690s
-sys     0m0.813s
-
-wc -l AAPL_projected_returns.csv
-24500 AAPL_projected_returns.csv
-```
-
-I'll say upfront I only have a vague idea of why the Rust implementation is so much faster. I consider myself a naive user of both languages and didn't implement any language level optimizations. I do use Pandas in the Python code and I have no idea if Pandas is optimized for certain types of computations and not for others.
+I only have a vague notion as to why the Rust implementation is so much faster. I consider myself a naive user of both languages and didn't implement any language level optimizations. I do use Pandas in the Python code and I have no idea if Pandas is optimized for certain types of computations and not for others.
 
 ## Projected Prices
 
@@ -120,15 +86,15 @@ The Rust code is verbose so I'm not including it here but here's a [gist](https:
 
 ## Take Aways
 
-I'm still suprised by how much faster the Rust code given that it's not taking advantage of concurrency or any fancy Rust features. 
+I'm still suprised by how much faster the Rust code given that it's not taking advantage of concurrency. 
 
 I figure the read and write is constrained by the hard drive so I'm guessing most of the gain comes from the look ups which probably benefits from manual memory management in Rust.
 
-I do wonder what the performance gain would be if I optimized the Python code before writing it in Rust. 
+Ignoring the fact that I don't know how I would optimize the Python code, I do wonder what the performance difference would be if I looked into optimizing the Python code before writing it in Rust. 
 
 I really like working with Rust's ecosystem. Online documentation is good and Cargo is great. 
 
-I used `peroxide` to calculate standard deviations but was surprised that there aren't more math/data science  libraries for Rust.. 
+I used `peroxide` to calculate standard deviations but was surprised that there aren't more math/data science libraries for Rust.
 
 The `clap` Crate is awesome and really simplified the passing and parsing of commnand line arguments in Rust. 
 
