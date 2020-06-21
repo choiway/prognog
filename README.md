@@ -51,7 +51,7 @@ def generate_projected_returns(filepath, ticker_symbol, generations, days_ahead,
                 current_tag_pattern, current_tag)
             price = price * (1 + current_ret)
             last_20_returns = roll_list(last_20_returns, current_ret)
-            # <<<< Bad Code >>>>
+            # <<<< 🤖 Bad Code ⚠️⚠️⚠️⚠️ >>>>
             # Don't append to a pandas dataframe like this
             # Almost all the performance hit is to the following append
             projected_returns_df = projected_returns_df.append(
