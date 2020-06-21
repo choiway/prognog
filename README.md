@@ -6,6 +6,8 @@ The actual projections aren't as interesting as the near 99% decrease in executi
 
 I only have a vague notion as to why the Rust implementation is so much faster. I consider myself a naive user of both languages and didn't implement any language level optimizations. I do use Pandas in the Python code and I have no idea if Pandas is optimized for certain types of computations and not for others.
 
+*Update 2020-06-20* Figured out where the bottleneck was in the Python. It had to do with Pandas and how I was updating a data frame from which I would write to a csv. I refactored to using a Python list and got the time down to `1.7s` with just Python code. The Rust code is still faster but not by much. 
+
 ## Projected Prices
 
 The algorithm used to project future prices generates a price for each projected day by randomly selecting a return from historical returns. The historical returns are categorized by 3-day volatility patterns based on the current day return relative to the standard deviation of returns over the previous 20 days.
